@@ -7,8 +7,10 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/docopt/docopt-go"
 	"github.com/kubernetes-incubator/node-feature-discovery/source"
 	"github.com/kubernetes-incubator/node-feature-discovery/source/cpuid"
+	"github.com/kubernetes-incubator/node-feature-discovery/source/exec"
 	"github.com/kubernetes-incubator/node-feature-discovery/source/fake"
 	"github.com/kubernetes-incubator/node-feature-discovery/source/network"
 	"github.com/kubernetes-incubator/node-feature-discovery/source/panic_fake"
@@ -17,7 +19,6 @@ import (
 	k8sclient "k8s.io/client-go/kubernetes"
 	api "k8s.io/client-go/pkg/api/v1"
 	restclient "k8s.io/client-go/rest"
-	"github.com/docopt/docopt-go"
 )
 
 const (
@@ -78,10 +79,10 @@ func main() {
 	}
 
 	// Parse command-line arguments.
-	noPublish, sourcesArg, whiteListArg := argsParse(nil)
+	noPublish, sourcesArg, whiteListArg, execCommand := argsParse(nil)
 
 	// Configure the parameters for feature discovery.
-	sources, labelWhiteList, err := configureParameters(sourcesArg, whiteListArg)
+	sources, labelWhiteList, err := configureParameters(sourcesArg, whiteListArg, execCommand)
 	if err != nil {
 		stderrLogger.Fatalf("error occurred while configuring parameters: %s", err.Error())
 	}
@@ -99,11 +100,11 @@ func main() {
 
 // argsParse parses the command line arguments passed to the program.
 // The argument argv is passed only for testing purposes.
-func argsParse(argv []string) (noPublish bool, sourcesArg []string, whiteListArg string) {
+func argsParse(argv []string) (noPublish bool, sourcesArg []string, whiteListArg string, execCommand string) {
 	usage := fmt.Sprintf(`%s.
 
   Usage:
-  %s [--no-publish --sources=<sources> --label-whitelist=<pattern>]
+  %s [--no-publish --sources=<sources> --label-whitelist=<pattern> --exec-command=<command>]
   %s -h | --help
   %s --version
 
@@ -111,11 +112,14 @@ func argsParse(argv []string) (noPublish bool, sourcesArg []string, whiteListArg
   -h --help                   Show this screen.
   --version                   Output version and exit.
   --sources=<sources>         Comma separated list of feature sources.
-                              [Default: cpuid,rdt,pstate,network]
+                              [Default: cpuid,rdt,pstate,network,exec]
   --no-publish                Do not publish discovered features to the
                               cluster-local Kubernetes API server.
   --label-whitelist=<pattern> Regular expression to filter label names to
-                              publish to the Kubernetes API server. [Default: ]`,
+                              publish to the Kubernetes API server. [Default: ]
+  --exec-command=<command>    Command used in exec source.  Command should output
+                              feature lists one by one line. [Default: ]
+  `,
 		ProgramName,
 		ProgramName,
 		ProgramName,
@@ -126,16 +130,18 @@ func argsParse(argv []string) (noPublish bool, sourcesArg []string, whiteListArg
 		fmt.Sprintf("%s %s", ProgramName, version), false)
 
 	// Parse argument values as usable types.
+	fmt.Println(arguments)
 	noPublish = arguments["--no-publish"].(bool)
 	sourcesArg = strings.Split(arguments["--sources"].(string), ",")
 	whiteListArg = arguments["--label-whitelist"].(string)
+	execCommand = arguments["--exec-command"].(string)
 
-	return noPublish, sourcesArg, whiteListArg
+	return noPublish, sourcesArg, whiteListArg, execCommand
 }
 
 // configureParameters returns all the variables required to perform feature
 // discovery based on command line arguments.
-func configureParameters(sourcesArg []string, whiteListArg string) (sources []source.FeatureSource, labelWhiteList *regexp.Regexp, err error) {
+func configureParameters(sourcesArg []string, whiteListArg string, execCommand string) (sources []source.FeatureSource, labelWhiteList *regexp.Regexp, err error) {
 	enabledSources := map[string]struct{}{}
 	for _, s := range sourcesArg {
 		enabledSources[strings.TrimSpace(s)] = struct{}{}
@@ -149,6 +155,7 @@ func configureParameters(sourcesArg []string, whiteListArg string) (sources []so
 		network.Source{},
 		fake.Source{},
 		panic_fake.Source{},
+		exec.Source{Command: execCommand},
 	}
 
 	sources = []source.FeatureSource{}

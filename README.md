@@ -33,7 +33,7 @@ This project uses GitHub [milestones](https://github.com/kubernetes-incubator/no
 node-feature-discovery.
 
   Usage:
-  node-feature-discovery [--no-publish --sources=<sources> --label-whitelist=<pattern>]
+  node-feature-discovery [--no-publish --sources=<sources> --label-whitelist=<pattern> --exec-command=<command>]
   node-feature-discovery -h | --help
   node-feature-discovery --version
 
@@ -46,6 +46,8 @@ node-feature-discovery.
                               cluster-local Kubernetes API server.
   --label-whitelist=<pattern> Regular expression to filter label names to
                               publish to the Kubernetes API server. [Default: ]
+  --exec-command=<command>    Command used in exec source.  Command should output
+                              feature lists one by one line. [Default: ]
 ```
 
 ## Feature discovery
@@ -156,8 +158,8 @@ cd <project-root>
 make
 ```
 
-**NOTE: Our default docker image is hosted in quay.io. To override the 
-`QUAY_REGISTRY_USER` use the `-e` option as follows: 
+**NOTE: Our default docker image is hosted in quay.io. To override the
+`QUAY_REGISTRY_USER` use the `-e` option as follows:
 `QUAY_REGISTRY_USER=<my-username> make docker -e`**
 
 Push the Docker Image (optional)
@@ -228,7 +230,7 @@ This is open source software released under the [Apache 2.0 License](LICENSE).
 
 ## Demo
 
-A demo on the benefits of using node feature discovery can be found in [demo](demo/). 
+A demo on the benefits of using node feature discovery can be found in [demo](demo/).
 
 <!-- Links -->
 [cpuid]: http://man7.org/linux/man-pages/man4/cpuid.4.html
